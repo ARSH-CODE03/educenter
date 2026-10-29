@@ -30,8 +30,8 @@ npm run dev     # http://localhost:5173
 | Email                 | Role    |
 |-----------------------|---------|
 | admin@educentre.in    | Admin   |
-| rakesh@educentre.in   | Teacher |
-| aarav@example.com     | Student |
+| teacher@educentre.in   | Teacher |
+| student@example.com     | Student |
 
 ## What was implemented
 

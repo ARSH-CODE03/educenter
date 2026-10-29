@@ -10,8 +10,50 @@ import { protect, restrictTo } from "../middleware/auth.js";
 
 const router = Router();
 
-// ==================== RATE LIMIT ====================
+// Check required controller exports before registering routes.
+const requiredHandlers = [
+  ["auth.register", auth.register],
+  ["auth.login", auth.login],
+  ["auth.me", auth.me],
+  ["students.listStudents", students.listStudents],
+  ["students.createStudent", students.createStudent],
+  ["students.updateStudent", students.updateStudent],
+  ["students.deleteStudent", students.deleteStudent],
+  ["students.getMyStudent", students.getMyStudent],
+  ["students.getMyClassmates", students.getMyClassmates],
+  ["students.createStudentProfileForExistingUser", students.createStudentProfileForExistingUser],
+  ["generic.listTeachers", generic.listTeachers],
+  ["generic.createTeacher", generic.createTeacher],
+  ["generic.listCourses", generic.listCourses],
+  ["generic.createCourse", generic.createCourse],
+  ["generic.listBatches", generic.listBatches],
+  ["generic.createBatch", generic.createBatch],
+  ["generic.listAttendance", generic.listAttendance],
+  ["generic.markAttendance", generic.markAttendance],
+  ["generic.listFees", generic.listFees],
+  ["generic.createFee", generic.createFee],
+  ["generic.listMaterials", generic.listMaterials],
+  ["generic.createMaterial", generic.createMaterial],
+  ["generic.listAnnouncements", generic.listAnnouncements],
+  ["generic.createAnnouncement", generic.createAnnouncement],
+  ["generic.dashboardStats", generic.dashboardStats],
+];
 
+const missingHandlers = requiredHandlers
+  .filter(([, handler]) => typeof handler !== "function")
+  .map(([name]) => name);
+
+if (typeof protect !== "function" || typeof restrictTo !== "function") {
+  throw new Error("Missing protect or restrictTo export in middleware/auth.js");
+}
+
+if (missingHandlers.length > 0) {
+  throw new Error(
+    `Missing controller exports: ${missingHandlers.join(", ")}`
+  );
+}
+
+// Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
@@ -19,13 +61,12 @@ const authLimiter = rateLimit({
     success: false,
     error: {
       code: "RATE_LIMIT",
-      message: "Too many attempts, try later",
+      message: "Too many attempts. Please try again later.",
     },
   },
 });
 
-// ==================== HEALTH ====================
-
+// Health
 router.get("/health", (req, res) => {
   res.json({
     success: true,
@@ -34,23 +75,24 @@ router.get("/health", (req, res) => {
   });
 });
 
-// ==================== AUTH ====================
-
+// Authentication
 router.post("/auth/register", authLimiter, auth.register);
 router.post("/auth/login", authLimiter, auth.login);
-
-router.post(
-  "/auth/users",
-  protect,
-  restrictTo("admin"),
-  auth.createManagedUser
-);
-
 router.get("/auth/me", protect, auth.me);
 
-// ==================== STUDENTS ====================
+// Optional admin-managed user creation
+if (typeof auth.createManagedUser === "function") {
+  router.post(
+    "/auth/users",
+    protect,
+    restrictTo("admin"),
+    auth.createManagedUser
+  );
+} else {
+  console.warn("Optional endpoint unavailable: POST /api/auth/users");
+}
 
-// Admin and teachers can view the student list.
+// Students
 router.get(
   "/students",
   protect,
@@ -58,7 +100,6 @@ router.get(
   students.listStudents
 );
 
-// Only admin can create, update, or delete student records.
 router.post(
   "/students",
   protect,
@@ -80,7 +121,6 @@ router.delete(
   students.deleteStudent
 );
 
-// Students can view their own profile and classmates.
 router.get(
   "/students/me",
   protect,
@@ -95,13 +135,15 @@ router.get(
   students.getMyClassmates
 );
 
-// ==================== TEACHERS ====================
-
-router.get(
-  "/teachers",
+router.post(
+  "/students/link-existing-account",
   protect,
-  generic.listTeachers
+  restrictTo("admin"),
+  students.createStudentProfileForExistingUser
 );
+
+// Teachers
+router.get("/teachers", protect, generic.listTeachers);
 
 router.post(
   "/teachers",
@@ -110,13 +152,8 @@ router.post(
   generic.createTeacher
 );
 
-// ==================== COURSES ====================
-
-router.get(
-  "/courses",
-  protect,
-  generic.listCourses
-);
+// Courses
+router.get("/courses", protect, generic.listCourses);
 
 router.post(
   "/courses",
@@ -125,13 +162,8 @@ router.post(
   generic.createCourse
 );
 
-// ==================== BATCHES ====================
-
-router.get(
-  "/batches",
-  protect,
-  generic.listBatches
-);
+// Batches
+router.get("/batches", protect, generic.listBatches);
 
 router.post(
   "/batches",
@@ -140,22 +172,22 @@ router.post(
   generic.createBatch
 );
 
-// Teacher sees assigned batches; student sees their own batch.
-// generic.getMyBatches must handle both roles.
-router.get(
-  "/batches/my",
-  protect,
-  restrictTo("teacher", "student"),
-  generic.getMyBatches
-);
+// Personal batches endpoint
+if (typeof generic.getMyBatches === "function") {
+  router.get(
+    "/batches/my",
+    protect,
+    restrictTo("teacher", "student"),
+    generic.getMyBatches
+  );
+} else {
+  console.warn(
+    "Endpoint unavailable: GET /api/batches/my — add getMyBatches to genericController.js"
+  );
+}
 
-// ==================== ATTENDANCE ====================
-
-router.get(
-  "/attendance",
-  protect,
-  generic.listAttendance
-);
+// Attendance
+router.get("/attendance", protect, generic.listAttendance);
 
 router.post(
   "/attendance",
@@ -164,14 +196,8 @@ router.post(
   generic.markAttendance
 );
 
-// ==================== FEES ====================
-
-// The controller should filter student results to their own fee records.
-router.get(
-  "/fees",
-  protect,
-  generic.listFees
-);
+// Fees
+router.get("/fees", protect, generic.listFees);
 
 router.post(
   "/fees",
@@ -180,9 +206,7 @@ router.post(
   generic.createFee
 );
 
-// ==================== MATERIALS ====================
-
-// Authenticated students, teachers, and admins can view materials.
+// Materials
 router.get(
   "/materials",
   protect,
@@ -190,7 +214,6 @@ router.get(
   generic.listMaterials
 );
 
-// Only teachers and admins can create materials.
 router.post(
   "/materials",
   protect,
@@ -198,13 +221,8 @@ router.post(
   generic.createMaterial
 );
 
-// ==================== ANNOUNCEMENTS ====================
-
-router.get(
-  "/announcements",
-  protect,
-  generic.listAnnouncements
-);
+// Announcements
+router.get("/announcements", protect, generic.listAnnouncements);
 
 router.post(
   "/announcements",
@@ -213,26 +231,14 @@ router.post(
   generic.createAnnouncement
 );
 
-// ==================== DASHBOARD / REPORTS ====================
-
-router.get(
-  "/dashboard",
-  protect,
-  generic.dashboardStats
-);
+// Dashboard and reports
+router.get("/dashboard", protect, generic.dashboardStats);
 
 router.get(
   "/reports",
   protect,
   restrictTo("admin"),
   generic.dashboardStats
-);
-
-router.post(
-  "/students/link-existing-account",
-  protect,
-  restrictTo("admin"),
-  students.createStudentProfileForExistingUser
 );
 
 export default router;

@@ -27,13 +27,16 @@ const studentSchema = new mongoose.Schema(
     course: {
       type: String,
       required: true,
+      default: "General",
     },
     batch: {
       type: String,
       required: true,
+      default: "Unassigned",
     },
     joiningDate: {
       type: Date,
+      default: Date.now,
     },
     totalFee: {
       type: Number,

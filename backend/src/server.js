@@ -44,6 +44,7 @@ app.use("/api", routes);
 app.use(notFound);
 app.use(errorHandler);
 
+
 async function start() {
   try {
     await connectDB();

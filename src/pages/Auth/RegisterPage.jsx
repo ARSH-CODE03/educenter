@@ -11,7 +11,7 @@ export default function RegisterPage() {
     centre: "",
     email: "",
     password: "",
-    role: "admin",
+    role: "teacher",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +61,7 @@ export default function RegisterPage() {
             <Input id="email" type="email" label="Email" icon={Mail} placeholder="you@educentre.in" value={form.email} onChange={update("email")} required />
             <Input id="password" type="password" label="Password" icon={Lock} placeholder="Minimum 8 characters" value={form.password} onChange={update("password")} minLength={8} required />
             <Select id="role" label="Account type" value={form.role} onChange={update("role")}>
-              <option value="admin">Admin</option>
+        
               <option value="teacher">Teacher</option>
               <option value="student">Student</option>
             </Select>

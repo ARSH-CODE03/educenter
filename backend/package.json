@@ -16,5 +16,13 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.0",
     "morgan": "^1.10.0"
-  }
+  },
+  
+"scripts": {
+  "dev": "node --watch src/server.js",
+  "start": "node src/server.js",
+  "seed": "node src/seed.js",
+  "provision-admin": "node src/provisionAdmin.js"
+}
+
 }

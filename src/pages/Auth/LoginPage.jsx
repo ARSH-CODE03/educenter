@@ -1,19 +1,12 @@
+
 import { Link, useNavigate } from "@/lib/router-compat";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { Button, Card, Input } from "@/components/ui-kit";
 import { useAuth, roleHome } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
-
-const roles = [
-  { key: "admin", label: "Admin" },
-  { key: "teacher", label: "Teacher" },
-  { key: "student", label: "Student" },
-];
 
 export default function LoginPage() {
-  const [role, setRole] = useState("admin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,10 +21,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const session = await login({ email, password, role });
-      navigate({ to: roleHome[session.role] || roleHome[role] });
+      // Backend verifies credentials and determines the user's role.
+      const session = await login({ email, password });
+
+      const destination = roleHome[session.role];
+
+      if (!destination) {
+        throw new Error("Your account does not have a valid role.");
+      }
+
+      navigate({ to: destination });
     } catch (err) {
-      setError(err.message || "Login failed");
+      setError(err.message || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
@@ -62,7 +63,7 @@ export default function LoginPage() {
               placeholder="you@educentre.in"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              autoComplete="off"
+              autoComplete="username"
               required
             />
 
@@ -74,55 +75,26 @@ export default function LoginPage() {
               placeholder="Enter your password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              autoComplete="new-password"
+              autoComplete="current-password"
               required
             />
 
-            <div>
-              <span className="mb-1.5 block text-[13px] font-medium">
-                Sign in as
-              </span>
-
-              <div className="grid grid-cols-3 gap-2 rounded-xl bg-secondary p-1">
-                {roles.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setRole(item.key)}
-                    className={cn(
-                      "rounded-lg py-2 text-[13px] font-semibold transition-colors",
-                      role === item.key
-                        ? "bg-surface text-primary shadow-soft"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {error && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              <p
+                role="alert"
+                className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600"
+              >
                 {error}
               </p>
             )}
 
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="size-4 rounded border-input accent-primary"
-                />
-                Remember me
-              </label>
-
-              <a
-                href="#reset"
+            <div className="flex justify-end pt-1">
+              <Link
+                to="/forgot-password"
                 className="text-[13px] font-semibold text-primary hover:underline"
               >
                 Forgot Password?
-              </a>
+              </Link>
             </div>
 
             <Button
@@ -137,7 +109,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-[13px] text-muted-foreground">
-            New centre?{" "}
+            New student or teacher?{" "}
             <Link
               to="/register"
               className="font-semibold text-primary hover:underline"
